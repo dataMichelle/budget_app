@@ -1,84 +1,69 @@
 import React, { createContext, useReducer } from 'react';
 
-// 5. The reducer - this is used to update the state, based on the action
+// Reducer function
 export const AppReducer = (state, action) => {
-    let budget = 0;
     switch (action.type) {
         case 'ADD_EXPENSE':
-            let total_budget = 0;
-            total_budget = state.expenses.reduce(
-                (previousExp, currentExp) => {
-                    return previousExp + currentExp.cost
-                },0
+            const updatedExpensesAdd = state.expenses.map((expense) => 
+                expense.name === action.payload.name
+                    ? { ...expense, cost: expense.cost + action.payload.cost }
+                    : expense
             );
-            total_budget = total_budget + action.payload.cost;
-            action.type = "DONE";
-            if(total_budget <= state.budget) {
-                total_budget = 0;
-                state.expenses.map((currentExp)=> {
-                    if(currentExp.name === action.payload.name) {
-                        currentExp.cost = action.payload.cost + currentExp.cost;
-                    }
-                    return currentExp
-                });
-                return {
-                    ...state,
-                };
-            } else {
-                alert("Cannot increase the allocation! Out of funds");
-                return {
-                    ...state
-                }
+
+            const totalExpensesAdd = updatedExpensesAdd.reduce((total, expense) => total + expense.cost, 0);
+
+            if (totalExpensesAdd > state.budget) {
+                alert('Cannot increase the allocation! Out of funds');
+                return state;
             }
-            case 'RED_EXPENSE':
-                const red_expenses = state.expenses.map((currentExp)=> {
-                    if (currentExp.name === action.payload.name && currentExp.cost - action.payload.cost >= 0) {
-                        currentExp.cost =  currentExp.cost - action.payload.cost;
-                        budget = state.budget + action.payload.cost
-                    }
-                    return currentExp
-                })
-                action.type = "DONE";
-                return {
-                    ...state,
-                    expenses: [...red_expenses],
-                };
-            case 'DELETE_EXPENSE':
-            action.type = "DONE";
-            state.expenses.map((currentExp)=> {
-                if (currentExp.name === action.payload) {
-                    budget = state.budget + currentExp.cost
-                    currentExp.cost =  0;
-                }
-                return currentExp
-            })
-            action.type = "DONE";
-            return {
-                ...state,
-                budget
-            };
-        case 'SET_BUDGET':
-            action.type = "DONE";
-            state.budget = action.payload;
 
             return {
                 ...state,
+                expenses: updatedExpensesAdd
             };
-        case 'CHG_CURRENCY':
-            action.type = "DONE";
-            state.currency = action.payload;
+
+        case 'RED_EXPENSE':
+            const updatedExpensesRed = state.expenses.map((expense) =>
+                expense.name === action.payload.name && expense.cost >= action.payload.cost
+                    ? { ...expense, cost: expense.cost - action.payload.cost }
+                    : expense
+            );
+
             return {
-                ...state
-            }
+                ...state,
+                expenses: updatedExpensesRed
+            };
+
+        case 'DELETE_EXPENSE':
+            const updatedExpensesDelete = state.expenses.map((expense) =>
+                expense.name === action.payload ? { ...expense, cost: 0 } : expense
+            );
+
+            return {
+                ...state,
+                expenses: updatedExpensesDelete
+            };
+
+        case 'SET_BUDGET':
+            return {
+                ...state,
+                budget: action.payload
+            };
+
+        case 'CHG_CURRENCY':
+            return {
+                ...state,
+                currency: action.payload
+            };
 
         default:
             return state;
     }
 };
 
-// 1. Sets the initial state when the app loads
+// Initial state
 const initialState = {
-    budget: 2000,
+    budget: 20000,
     expenses: [
         { id: "Marketing", name: 'Marketing', cost: 50 },
         { id: "Finance", name: 'Finance', cost: 300 },
@@ -86,25 +71,18 @@ const initialState = {
         { id: "Human Resource", name: 'Human Resource', cost: 40 },
         { id: "IT", name: 'IT', cost: 500 },
     ],
-    currency: '£'
+    currency: '$'
 };
 
-// 2. Creates the context this is the thing our components import and use to get the state
+// Create context
 export const AppContext = createContext();
 
-// 3. Provider component - wraps the components we want to give access to the state
-// Accepts the children, which are the nested(wrapped) components
+// Provider component
 export const AppProvider = (props) => {
-    // 4. Sets up the app state. takes a reducer, and an initial state
     const [state, dispatch] = useReducer(AppReducer, initialState);
-    let remaining = 0;
 
-    if (state.expenses) {
-            const totalExpenses = state.expenses.reduce((total, item) => {
-            return (total = total + item.cost);
-        }, 0);
-        remaining = state.budget - totalExpenses;
-    }
+    const totalExpenses = state.expenses.reduce((total, expense) => total + expense.cost, 0);
+    const remaining = state.budget - totalExpenses;
 
     return (
         <AppContext.Provider
